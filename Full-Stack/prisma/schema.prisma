@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Course {
+  id String @id @default(uuid()) @map("_id") 
+  userId String
+  title String @db.String
+  description String? @db.String
+  imageUrl String? @db.String
+  price Float?
+  isPublished Boolean @default(false)
+  author String
+
+  categoryId String?
+  category Category? @relation(fields: [categoryId], references: [id])
+
+  chapters Chapter[]
+  purchases Purchase[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@fulltext([title])
+  Feedback Feedback[]
+}
+
+model Category {
+  id String @id @default(uuid()) @map("_id") 
+  name String @unique
+  courses Course[]
+}
+
+model Chapter {
+  id String @id @default(uuid()) @map("_id") 
+  title String
+  description String? @db.String
+  videoUrl String? @db.String
+  position Int
+  isPublished Boolean @default(false)
+  isFree Boolean @default(false)
+
+  courseId String
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  userProgress UserProgress[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([courseId])
+}
+
+model UserProgress {
+  id String @id @default(uuid()) @map("_id") 
+  userId String
+
+  chapterId String
+  chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  isCompleted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([chapterId])
+  @@unique([userId, chapterId])
+}
+
+model Purchase {
+  id String @id @default(uuid()) @map("_id") 
+  userId String
+
+  courseId String
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+
+  @@unique([userId, courseId]) // ! no one can buy the same course 2 times!!
+  @@index([courseId])
+}
+
+model Employee {
+  id String @id @default(uuid()) @map("_id")
+  userId  String 
+  name String
+  email String @unique
+  department String
+  role String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // If you need relations to other models (e.g., courses, etc.), define them here
+
+  Feedback Feedback[]
+}
+
+// model Feedback {
+//   id                String   @id @default(auto()) @map("_id") @db.ObjectId
+//   userId            String   // The ID of the user providing feedback
+//   courseRating      Int?
+//   quizRating        Int?
+//   instructorRating  Int?
+//   contentRating     Int?
+//   satisfaction      Int?
+//   comments          String?
+//   createdAt         DateTime @default(now()) // Timestamp for when feedback was created
+// }
+model Feedback {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  courseId         String   // Reference to the course
+  course           Course   @relation(fields: [courseId], references: [id]) // Foreign key relationship to Course model
+  userId           String   // Reference to the user who submitted the feedback
+  user             Employee @relation(fields: [userId], references: [id]) // Foreign key relationship to Employee (User) model
+  courseRating     Int      @default(0) // Rating for the course (1-5)
+  quizRating       Int      @default(0) // Rating for the quizzes (1-5)
+  instructorRating Int      @default(0) // Rating for the instructor (1-5)
+  contentRating    Int      @default(0) // Rating for the content relevance (1-5)
+  satisfaction     Int      @default(0) // Overall satisfaction rating (1-5)
+  comments         String?  // Optional comments
+  createdAt        DateTime @default(now()) // Timestamp for when the feedback was created
+
+  @@index([courseId])
+  @@index([userId])
+}
+
+model QuizScore {
+  id String @id @default(uuid()) @map("_id")
+  userId String
+  score Int
+  attempt Int
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+}
+
+model Discussion {
+  id        String    @id @default(uuid()) @map("_id")
+  category  String
+  messages  Message[]
+  createdAt DateTime  @default(now())
+}
+
+model Message {
+  id          String   @id @default(uuid()) @map("_id")
+  discussionId String
+  userId     String
+  content     String
+  createdAt   DateTime @default(now())
+  userName     String
+  avatarUrl    String
+  discussion Discussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+}
